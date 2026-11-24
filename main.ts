@@ -34,19 +34,28 @@ function entryLength(text: string): number {
   }
   for (const ch of text) {
     const code = ch.codePointAt(0) ?? 0;
-    if (code < 0x20) {
+    if (code < 0x20 || code === 0x7f) {
       throw new Error(
         `entry contains control character U+${code.toString(16).padStart(4, "0")}`,
       );
     }
   }
+  if (text !== text.trim()) {
+    throw new Error("entry must not have leading or trailing whitespace");
+  }
   return length;
+}
+
+// Write via a temp file + rename so /output/entry.txt is never left
+// half-written if the process is interrupted mid-write.
+function writeEntryAtomic(text: string): void {
+  mkdirSync("/output", { recursive: true });
+  const tmp = "/output/.entry.txt.tmp";
+  writeFileSync(tmp, text, "utf8");
+  renameSync(tmp, "/output/entry.txt");
 }
 
 const length = entryLength(ENTRY);
 
-mkdirSync("/output", { recursive: true });
-const tmp = "/output/.entry.txt.tmp";
-writeFileSync(tmp, ENTRY, "utf8");
-renameSync(tmp, "/output/entry.txt");
+writeEntryAtomic(ENTRY);
 console.log(`wrote ${length} characters to /output/entry.txt`);
